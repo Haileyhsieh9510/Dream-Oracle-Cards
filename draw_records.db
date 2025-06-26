@@ -1,0 +1,27 @@
+#範例 : 將抽卡的情緒、行動回填到資料庫
+def init_db():
+    # 連線到一個叫 draw_records.db 的資料庫，若不存在會自動建立
+    conn = sqlite3.connect('draw_records.db')
+    c = conn.cursor()
+
+    # 建立資料表 draws，若已存在就不動它
+    c.execute('''CREATE TABLE IF NOT EXISTS draws
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  user_id TEXT,
+                  emotion TEXT,
+                  action TEXT,
+                  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''') # 自動記下現在的時間
+    conn.commit()
+    conn.close()
+
+# 使用者每次抽卡，就把資料存起來
+def save_card_draw(user_id, emotion, action):
+    conn = sqlite3.connect('draw_records.db')
+    c = conn.cursor()
+    c.execute("INSERT INTO draws (user_id, emotion, action) VALUES (?, ?, ?)",
+              (user_id, emotion, action))
+    conn.commit()
+    conn.close()
+#開啟程式時就會自動建立好資料庫與表格
+init_db()
+
