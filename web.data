@@ -1,0 +1,42 @@
+import sqlite3
+from datetime import datetime
+import os
+
+def init_db():
+    """
+    初始化資料庫與資料表
+    """
+    db_path = "dream_log.db"
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS draws (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT DEFAULT (datetime('now', 'localtime')),
+            keyword TEXT,
+            dream_text TEXT,
+            emotion TEXT,
+            title TEXT,
+            message TEXT
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+def save_result(keyword, dream_text, emotion, card):
+    """
+    儲存一筆抽卡結果到 SQLite 資料庫
+    """
+    db_path = "dream_log.db"
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+
+    c.execute('''
+        INSERT INTO draws (keyword, dream_text, emotion, title, message)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (keyword, dream_text, emotion, card["title"], card["message"]))
+
+    conn.commit()
+    conn.close()
