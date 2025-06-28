@@ -10,6 +10,7 @@ from linebot.v3.messaging import (
 from linebot.v3.webhooks import MessageEvent, TextMessageContent
 from dotenv import load_dotenv
 import os
+import json  # ✅ 新增：處理 JSON 儲存
 
 from dream_core import process_dream  # ✅ 解夢邏輯核心
 
@@ -55,17 +56,42 @@ def callback():
 # 處理 LINE 的文字訊息事件
 @handler.add(MessageEvent, message=TextMessageContent)
 def handle_message(event):
+    print("👤 使用者 ID：", event.source.user_id)
     user_input = event.message.text.strip()
 
-    if user_input.lower() in ["q", "quit", "exit"]:
+    # ✅ [新增指令]：格式為「新增 關鍵字 網址」
+    if user_input.startswith("新增 "):
+        parts = user_input.split()
+        if len(parts) == 3 and parts[2].startswith("http"):
+            keyword = parts[1]
+            url = parts[2]
+
+            path = "dream_links.json"
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+            except:
+                data = {}
+
+            data[keyword] = url
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+
+            reply_text = f"✅ 已成功新增：{keyword}\n🔗 {url}"
+        else:
+            reply_text = "⚠️ 格式錯誤，請使用：\n新增 關鍵字 網址\n範例：新增 蛇 https://www.golla.tw/..."
+
+        messages = [TextMessage(text=reply_text)]
+
+    elif user_input.lower() in ["q", "quit", "exit"]:
         reply_text = "👋 感謝使用 Dream Oracle，再會～"
         messages = [TextMessage(text=reply_text)]
+
     else:
-        result = process_dream(user_input)
+        user_id = event.source.user_id  # ✅ 抓取使用者 ID
+        result = process_dream(user_input, user_id=user_id)  # ✅ 傳給 dream_core.py
         reply_text = result["text"]
         image_filename = result["image"]
-
-        # ✅ 正確的圖片網址路徑，注意加上 /cards/
         image_url = f"https://dream-oracle.onrender.com/Cards/{image_filename}"
 
         messages = [

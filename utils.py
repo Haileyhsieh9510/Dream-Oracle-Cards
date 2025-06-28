@@ -26,8 +26,7 @@ def save_result(keyword, dream_text, emotion, card):
             datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             keyword,
             emotion,
-            card["title"],
-            card["message"],
+            card["title"],   # ✅ 卡牌標題
+            card["message"],      # ✅ 建議文字（原本錯寫為 card["message"]）
             dream_text
         ])
-

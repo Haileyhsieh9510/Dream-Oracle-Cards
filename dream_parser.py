@@ -1,57 +1,43 @@
-import requests
-from bs4 import BeautifulSoup
+# dream_parser.py
 import json
 import os
-import difflib
+from bs4 import BeautifulSoup
+import requests
 
+# 載入自訂關鍵字網址對應表
+def load_dream_links():
+    path = "dream_links.json"
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
 
-def get_dream_interpretation(keyword):
-    # 檢查 dream_links.json 是否存在
-    if not os.path.exists("dream_links.json"):
-        return "⚠️ 找不到 dream_links.json 檔案"
+dream_links = load_dream_links()
 
-    # 載入夢境對應網址字典
-    with open("dream_links.json", "r", encoding="utf-8") as f:
-        dream_links = json.load(f)
-
-    # 如果關鍵字不在字典中，嘗試提供相似建議
-    if keyword not in dream_links:
-        suggestions = difflib.get_close_matches(keyword, dream_links.keys(), n=3, cutoff=0.6)
-
-        if suggestions:
-            print(f"⚠️ 沒有找到「{keyword}」的連結")
-            print("🧐 您可能想輸入的是：")
-            for s in suggestions:
-                print(f"👉 {s}")
-        else:
-            print(f"⚠️ 沒有找到「{keyword}」的連結，也找不到相近關鍵字。")
-
-        add = input("👉 是否要手動新增此關鍵字對應的網址？(y/n)：").strip().lower()
-        if add == "y":
-            new_url = input("請輸入對應的完整網址（包含 https://）：").strip()
-            if not new_url.startswith("http"):
-                new_url = "https://" + new_url
-
-            # 加入並存檔
-            dream_links[keyword] = new_url
-            with open("dream_links.json", "w", encoding="utf-8") as f:
-                json.dump(dream_links, f, ensure_ascii=False, indent=2)
-            print("✅ 已新增至 dream_links.json")
-        else:
-            return f"⚠️ 找不到與「{keyword}」相關的夢境解析"
-
-    url = dream_links.get(keyword)
+# ✅ 直接從網址爬取夢境內容
+def crawl_dream_from_url(url):
     try:
         headers = {"User-Agent": "Mozilla/5.0"}
-        response = requests.get(url, headers=headers, timeout=10)
-        response.encoding = "utf-8"
+        resp = requests.get(url, headers=headers, timeout=10)
+        resp.encoding = "utf-8"
 
-        soup = BeautifulSoup(response.text, "html.parser")
-        entry = soup.find("div", id="entrybody")
-        if not entry:
-            return "⚠️ 找不到夢境內容區塊"
+        if resp.status_code != 200:
+            return "⚠️ 無法載入夢境解析頁面"
 
-        return entry.get_text(separator="\n", strip=True)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        body_div = soup.find("div", id="entrybody")
+        if not body_div:
+            return "⚠️ 找不到夢境解析內容"
+
+        return body_div.get_text(separator="\n", strip=True)
 
     except Exception as e:
-        return f"⚠️ 無法擷取內容：{e}"
+        return f"⚠️ 發生錯誤：{e}"
+
+# ✅ 解夢主邏輯
+def get_dream_interpretation(keyword):
+    if keyword in dream_links:
+        url = dream_links[keyword]
+        return crawl_dream_from_url(url)
+
+    return "⚠️ 尚未支援此夢境，請稍後再試或由開發者補充資料"
